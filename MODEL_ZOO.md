@@ -118,4 +118,5 @@ The downloaded checkpoints should be organized in the following structure
    ```
 
 ## Raw Results
-Raw results are being prepared, and running the model directly should yield the same results.
+Raw results are being prepared.
+Running the model directly should yield the same results as the paper.
