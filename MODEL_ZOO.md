@@ -35,7 +35,7 @@ The model weights are also given by the links.
     <td>58.8</td>
     <td>60.9</td>
     <td>67.4</td>
-    <td><a href="">[Download]</a></td>
+    <td><a href="https://pan.baidu.com/s/1XizoKl6zduj6l8Tb3SQi2g?pwd=jqpb">[Download]</a></td>
   </tr>
   <tr>
     <td>SUTrack-B224</td>
@@ -50,7 +50,7 @@ The model weights are also given by the links.
     <td>62.7</td>
     <td>65.0</td>
     <td>70.8</td>
-    <td><a href="">[Download]</a></td>
+    <td><a href="https://pan.baidu.com/s/1XizoKl6zduj6l8Tb3SQi2g?pwd=jqpb">[Download]</a></td>
   </tr>
   <tr>
     <td>SUTrack-B384</td>
@@ -65,7 +65,7 @@ The model weights are also given by the links.
     <td>63.4</td>
     <td>65.6</td>
     <td>69.7</td>
-    <td><a href="">[Download]</a></td>
+    <td><a href="https://pan.baidu.com/s/1XizoKl6zduj6l8Tb3SQi2g?pwd=jqpb">[Download]</a></td>
   </tr>
   <tr>
     <td>SUTrack-L224</td>
@@ -80,7 +80,7 @@ The model weights are also given by the links.
     <td>64.0</td>
     <td>66.7</td>
     <td>72.7</td>
-    <td><a href="">[Download]</a></td>
+    <td><a href="https://pan.baidu.com/s/1XizoKl6zduj6l8Tb3SQi2g?pwd=jqpb">[Download]</a></td>
   </tr>
   <tr>
     <td>SUTrack-L384</td>
@@ -95,7 +95,7 @@ The model weights are also given by the links.
     <td>63.8</td>
     <td>67.9</td>
     <td>71.2</td>
-    <td><a href="">[Download]</a></td>
+    <td><a href="https://pan.baidu.com/s/1XizoKl6zduj6l8Tb3SQi2g?pwd=jqpb">[Download]</a></td>
   </tr>
 </table>
 
