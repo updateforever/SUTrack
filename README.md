@@ -181,6 +181,7 @@ Put the pretrained models in [./pretrained](pretrained), it should be like:
             |-- fast_itpn_base_clipl_e1600.pt
             |-- fast_itpn_large_1600e_1k.pt
             |-- fast_itpn_tiny_1600e_1k.pt
+```
 Then, run the following command:
 ```
 python -m torch.distributed.launch --nproc_per_node 4 lib/train/run_training.py --script sutrack --config sutrack_b224 --save_dir .
