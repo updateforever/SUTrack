@@ -100,6 +100,7 @@ The model weights are also given by the links.
 </table>
 
 [Download Models](https://pan.baidu.com/s/1XizoKl6zduj6l8Tb3SQi2g?pwd=jqpb)
+
 The downloaded checkpoints should be organized in the following structure
    ```
    ${SUTrack_ROOT}
