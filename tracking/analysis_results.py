@@ -9,8 +9,8 @@ trackers = []
 dataset_name = 'lasot'
 # choosen from 'uav', 'nfs', 'lasot_extension_subset', 'lasot', 'otb99_lang', 'tnl2k'
 
-trackers.extend(trackerlist(name='sutrack', parameter_name='vegeta_s3_l384_nlptnl2k_average_lessmm_2t', dataset_name=dataset_name,
-                            run_ids=None, display_name='vegeta_s3_l384_nlptnl2k_average_lessmm_2t'))
+trackers.extend(trackerlist(name='sutrack', parameter_name='sutrack_b384', dataset_name=dataset_name,
+                            run_ids=None, display_name='sutrack_b384', run_soi=3))
 
 dataset = get_dataset(dataset_name)
 

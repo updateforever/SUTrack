@@ -199,6 +199,33 @@ class CenterPredictor(nn.Module, ):
         if return_score:
             return bbox, max_score
         return bbox
+        
+    def cal_bbox_for_all_scores(self, score_map_ctr, size_map, offset_map, return_score=False):
+        # 获取得分图的形状 wyp
+        batch_size, _, height, width = score_map_ctr.shape
+
+        # 获取每个位置的 y, x 坐标
+        idx_y, idx_x = torch.meshgrid(torch.arange(height, device=score_map_ctr.device),
+                                    torch.arange(width, device=score_map_ctr.device))
+        idx_x = idx_x.flatten()  # 将 x 坐标展平
+        idx_y = idx_y.flatten()  # 将 y 坐标展平
+
+        # 展开 score_map_ctr, size_map, offset_map
+        score_map_ctr = score_map_ctr.flatten(2)  # batch_size, C, height * width
+        size_map = size_map.flatten(2)  # batch_size, 2, height * width
+        offset_map = offset_map.flatten(2)  # batch_size, 2, height * width
+
+        # 计算每个点的坐标框 (cx, cy, w, h)
+        # 对每个点的坐标，计算相应的 (cx, cy) 以及宽度和高度 (w, h)
+        bboxes = torch.cat([(idx_x.to(torch.float) + offset_map[:, :1]) / self.feat_sz,
+                        (idx_y.to(torch.float) + offset_map[:, 1:]) / self.feat_sz,
+                        size_map.squeeze(-1)], dim=1)  # Concatenate x, y, width, height
+
+        if return_score:
+            # 返回所有点的坐标框和对应的得分
+            score_map = score_map_ctr.flatten(1)  # 展平得分图
+            return bboxes, score_map
+        return bboxes
 
     def get_pred(self, score_map_ctr, size_map, offset_map):
         max_score, idx = torch.max(score_map_ctr.flatten(1), dim=1, keepdim=True)

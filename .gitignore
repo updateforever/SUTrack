@@ -1,0 +1,20 @@
+# 忽略所有的 .pyc 文件
+*.pyc
+
+soi/debug
+soi/step3_vis/
+soi/step4_vlt_outputs
+soi/step5_verification_outputs
+soi/step3_1_results
+soi/step3_2_results
+soi/step3_2_results_filter0gt
+soi/step3_soi_framesold
+soi/tracker_soi_results
+soi/trackers_status
+soi/step3_2_results1111111111111
+soi/v1_step3_soi_frames
+
+output/
+SUTRACK_ep0180.pth.tar
+SUTRACK_b384_ep0180.pth.tar
+image.png

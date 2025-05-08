@@ -6,10 +6,10 @@ from lib.utils.box_ops import box_xywh_to_xyxy, box_xyxy_to_cxcywh
 from lib.test.utils.hann import hann2d
 from lib.models.sutrack import build_sutrack
 from lib.test.tracker.utils import Preprocessor
-from lib.utils.box_ops import clip_box
+from lib.utils.box_ops import clip_box, clip_box_batch
 import clip
 import numpy as np
-
+import math
 
 class SUTRACK(BaseTracker):
     def __init__(self, params, dataset_name):
@@ -117,6 +117,9 @@ class SUTRACK(BaseTracker):
         x_patch_arr, resize_factor = sample_target(image, self.state, self.params.search_factor,
                                                    output_sz=self.params.search_size)  # (x1, y1, w, h)
         search = self.preprocessor.process(x_patch_arr)
+        # get search box wyp
+        search_box = self.search_box(image, self.state, self.params.search_factor)  
+
         if self.multi_modal_vision and (search.size(1) == 3):
             search = torch.cat((search, search), axis=1)
         search_list = [search]
@@ -150,7 +153,21 @@ class SUTRACK(BaseTracker):
         # Baseline: Take the mean of all pred boxes as the final result
         pred_box = (pred_boxes.mean(dim=0) * self.params.search_size / resize_factor).tolist()  # (cx, cy, w, h) [0,1]
         # get the final box result
+        pre_state = self.state
         self.state = clip_box(self.map_box_back(pred_box, resize_factor), H, W, margin=10)
+
+        # wyp
+        all_scoremap_boxes = self.network.decoder.cal_bbox_for_all_scores(response, out_dict['size_map'], out_dict['offset_map'])  # 1,4,576
+        all_scoremap_boxes = all_scoremap_boxes.view(1, 4, 24, 24) * self.params.search_size / resize_factor  # 放缩 
+        all_state = self.map_box_back_batch(all_scoremap_boxes, resize_factor, pre_state)  # 映射回原图的框
+        all_state = clip_box_batch(all_state, H, W, margin=10)  # torch.Size([1, 4, 24, 24])
+        self.distractor_dataset_data = dict(score_map=response,
+                                    # sample_pos=sample_pos[scale_ind, :],
+                                    sample_scale=resize_factor,
+                                    search_area_box=search_box, 
+                                    x_dict=x_patch_arr,
+                                    all_scoremap_boxes=all_state
+                                    )
 
         # update the template
         if self.num_template > 1:
@@ -175,16 +192,16 @@ class SUTRACK(BaseTracker):
                     self.template_anno_list.pop(1)
 
         # for debug
-        if image.shape[-1] == 6:
-            image_show = image[:,:,:3]
-        else:
-            image_show = image
-        if self.debug == 1:
-            x1, y1, w, h = self.state
-            image_BGR = cv2.cvtColor(image_show, cv2.COLOR_RGB2BGR)
-            cv2.rectangle(image_BGR, (int(x1),int(y1)), (int(x1+w),int(y1+h)), color=(0,0,255), thickness=2)
-            cv2.imshow('vis', image_BGR)
-            cv2.waitKey(1)
+        # if image.shape[-1] == 6:
+        #     image_show = image[:,:,:3]
+        # else:
+        #     image_show = image
+        # if self.debug == 1:
+        #     x1, y1, w, h = self.state
+        #     image_BGR = cv2.cvtColor(image_show, cv2.COLOR_RGB2BGR)
+        #     cv2.rectangle(image_BGR, (int(x1),int(y1)), (int(x1+w),int(y1+h)), color=(0,0,255), thickness=2)
+        #     cv2.imshow('vis', image_BGR)
+        #     cv2.waitKey(1)
 
         return {"target_bbox": self.state,
                 "best_score": conf_score}
@@ -197,13 +214,13 @@ class SUTRACK(BaseTracker):
         cy_real = cy + (cy_prev - half_side)
         return [cx_real - 0.5 * w, cy_real - 0.5 * h, w, h]
 
-    def map_box_back_batch(self, pred_box: torch.Tensor, resize_factor: float):
-        cx_prev, cy_prev = self.state[0] + 0.5 * self.state[2], self.state[1] + 0.5 * self.state[3]
-        cx, cy, w, h = pred_box.unbind(-1) # (N,4) --> (N,)
-        half_side = 0.5 * self.params.search_size / resize_factor
-        cx_real = cx + (cx_prev - half_side)
-        cy_real = cy + (cy_prev - half_side)
-        return torch.stack([cx_real - 0.5 * w, cy_real - 0.5 * h, w, h], dim=-1)
+    # def map_box_back_batch(self, pred_box: torch.Tensor, resize_factor: float):
+    #     cx_prev, cy_prev = self.state[0] + 0.5 * self.state[2], self.state[1] + 0.5 * self.state[3]
+    #     cx, cy, w, h = pred_box.unbind(-1) # (N,4) --> (N,)
+    #     half_side = 0.5 * self.params.search_size / resize_factor
+    #     cx_real = cx + (cx_prev - half_side)
+    #     cy_real = cy + (cy_prev - half_side)
+    #     return torch.stack([cx_real - 0.5 * w, cy_real - 0.5 * h, w, h], dim=-1)
 
     def extract_token_from_nlp_clip(self, nlp):
         if nlp is None:
@@ -214,5 +231,54 @@ class SUTRACK(BaseTracker):
             nlp_masks = (nlp_ids == 0).long()
         return nlp_ids, nlp_masks
 
+    def map_box_back_batch(self, pred_box: torch.Tensor, resize_factor: float, pre_state):
+        """
+        输入 pred_box 可以为 (1, 4, 24, 24) 或 (1, 4, 576)
+        """
+        cx_prev, cy_prev = pre_state[0] + 0.5 * pre_state[2], pre_state[1] + 0.5 * pre_state[3]
+
+        # 适配不同输入维度
+        if pred_box.ndim == 4:  # 形状 (1, 4, 24, 24)
+            cx, cy, w, h = pred_box[:, 0, :, :], pred_box[:, 1, :, :], pred_box[:, 2, :, :], pred_box[:, 3, :, :]
+        elif pred_box.ndim == 3:  # 形状 (1, 4, 576)
+            cx, cy, w, h = pred_box[:, 0, :], pred_box[:, 1, :], pred_box[:, 2, :], pred_box[:, 3, :]
+            # 将 (1, 4, 576) 转换为 (1, 4, 24, 24) 形状
+            batch_size, channels, _ = pred_box.shape
+            cx, cy, w, h = [x.view(batch_size, 24, 24) for x in (cx, cy, w, h)]
+        else:
+            raise ValueError(f"Unsupported pred_box shape: {pred_box.shape}")
+
+        # 计算半边长度
+        half_side = 0.5 * self.params.search_size / resize_factor
+
+        # 计算真实的中心坐标 (cx_real, cy_real)
+        cx_real = cx + (cx_prev - half_side)
+        cy_real = cy + (cy_prev - half_side)
+
+        # 重新组合框: (xmin, ymin, w, h)
+        mapped_box = torch.stack([cx_real - 0.5 * w, cy_real - 0.5 * h, w, h], dim=1)  # 输出 shape: (1, 4, 24, 24)
+
+        return mapped_box
+
+    
+    def search_box(self, im, state, search_area_factor):
+        # 搜索框坐标
+        if not isinstance(state, list):
+            x, y, w, h = state.tolist()
+        else:
+            x, y, w, h = state
+        crop_sz = math.ceil(math.sqrt(w * h) * search_area_factor)  # 模板区域sz
+        x1 = round(x + 0.5 * w - crop_sz * 0.5)
+        x2 = x1 + crop_sz
+        y1 = round(y + 0.5 * h - crop_sz * 0.5)
+        y2 = y1 + crop_sz
+        x1_pad = max(0, -x1)
+        x2_pad = max(x2 - im.shape[1] + 1, 0)
+        y1_pad = max(0, -y1)
+        y2_pad = max(y2 - im.shape[0] + 1, 0)
+        im_crop = [x1+x1_pad, y1+y1_pad, x2 - x2_pad -x1 - x1_pad, y2 - y2_pad - y1 - y1_pad] # x,y,h,w
+
+        return im_crop
+    
 def get_tracker_class():
     return SUTRACK

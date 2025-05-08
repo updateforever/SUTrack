@@ -1122,9 +1122,9 @@ def fastitpnt(pretrained=False, pos_type="interpolate", pretrain_type="", patche
         pos_type=pos_type,
         **kwargs)
     model.default_cfg = _cfg()
-    if pretrained:
-        checkpoint = torch.load(pretrain_type, map_location="cpu")
-        load_pretrained(model,checkpoint,pos_type,patchembed_init)
+    # if pretrained:
+    #     checkpoint = torch.load(pretrain_type, map_location="cpu")  wyp
+    #     load_pretrained(model,checkpoint,pos_type,patchembed_init)
     return model
 
 
@@ -1139,9 +1139,9 @@ def fastitpns(pretrained=False, pos_type="interpolate", pretrain_type="", patche
         pos_type=pos_type,
         **kwargs)
     model.default_cfg = _cfg()
-    if pretrained:
-        checkpoint = torch.load(pretrain_type, map_location="cpu")
-        load_pretrained(model,checkpoint,pos_type,patchembed_init)
+    # if pretrained:
+    #     checkpoint = torch.load(pretrain_type, map_location="cpu")
+    #     load_pretrained(model,checkpoint,pos_type,patchembed_init)
     return model
 
 
@@ -1156,9 +1156,9 @@ def fastitpnb(pretrained=False, pos_type="interpolate", pretrain_type="", patche
         pos_type = pos_type,
         **kwargs)
     model.default_cfg = _cfg()
-    if pretrained:
-        checkpoint = torch.load(pretrain_type, map_location="cpu")
-        load_pretrained(model,checkpoint,pos_type,patchembed_init)
+    # if pretrained:
+    #     checkpoint = torch.load(pretrain_type, map_location="cpu")
+    #     load_pretrained(model,checkpoint,pos_type,patchembed_init)
     return model
 
 
@@ -1173,7 +1173,7 @@ def fastitpnl(pretrained=False, pos_type="interpolate", pretrain_type="", patche
         pos_type="interpolate",
         **kwargs)
     model.default_cfg = _cfg()
-    if pretrained:
-        checkpoint = torch.load(pretrain_type, map_location="cpu")
-        load_pretrained(model,checkpoint,pos_type,patchembed_init)
+    # if pretrained:  wyp
+    #     checkpoint = torch.load(pretrain_type, map_location="cpu")
+    #     load_pretrained(model,checkpoint,pos_type,patchembed_init)
     return model

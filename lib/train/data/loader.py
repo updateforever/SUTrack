@@ -2,7 +2,9 @@ import torch
 import torch.utils.data.dataloader
 import importlib
 import collections
-from torch._six import string_classes
+# from torch._six import string_classes
+# 替代 torch._six.string_classes
+string_classes = (str, bytes)
 int_classes = int
 from lib.utils import TensorDict, TensorList
 

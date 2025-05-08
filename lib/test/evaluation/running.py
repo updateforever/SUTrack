@@ -1,3 +1,6 @@
+import time
+from datetime import timedelta
+
 import numpy as np
 import multiprocessing
 import os
@@ -5,8 +8,9 @@ import sys
 from itertools import product
 from collections import OrderedDict
 from lib.test.evaluation import Sequence, Tracker
+from lib.train.data.image_loader import imwrite_indexed
 import torch
-
+import json
 
 def _save_tracker_output(seq: Sequence, tracker: Tracker, output: dict):
     """Saves the output of the tracker."""
@@ -14,14 +18,15 @@ def _save_tracker_output(seq: Sequence, tracker: Tracker, output: dict):
     if not os.path.exists(tracker.results_dir):
         print("create tracking result dir:", tracker.results_dir)
         os.makedirs(tracker.results_dir)
-    if seq.dataset in ['trackingnet', 'got10k', 'lasot', 'lasot_extension_subset', 'otb', 'uav', 'nfs', 'tnl2k']:
-        if not os.path.exists(os.path.join(tracker.results_dir, seq.dataset)):
-            os.makedirs(os.path.join(tracker.results_dir, seq.dataset))
-    '''2021.1.5 create new folder for these three datasets'''
-    if seq.dataset in ['trackingnet', 'got10k', 'lasot', 'lasot_extension_subset', 'otb', 'uav', 'nfs', 'tnl2k']:
-        base_results_path = os.path.join(tracker.results_dir, seq.dataset, seq.name)
-    else:
-        base_results_path = os.path.join(tracker.results_dir, seq.name)
+
+    '''2022.9.18 create new folder for all datasets'''
+    if not os.path.exists(os.path.join(tracker.results_dir, seq.dataset)):
+        os.makedirs(os.path.join(tracker.results_dir, seq.dataset))
+
+    base_results_path = os.path.join(tracker.results_dir, seq.dataset, seq.name)
+    segmentation_path = os.path.join(tracker.segmentation_dir, seq.dataset, seq.name)
+
+    frame_names = [os.path.splitext(os.path.basename(f))[0] for f in seq.frames]
 
     def save_bb(file, data):
         tracked_bb = np.array(data).astype(int)
@@ -34,6 +39,15 @@ def _save_tracker_output(seq: Sequence, tracker: Tracker, output: dict):
     def save_score(file, data):
         scores = np.array(data).astype(float)
         np.savetxt(file, scores, delimiter='\t', fmt='%.2f')
+
+    def save_status(file, data):    
+        tracked_status = np.array(data).astype(str)
+        np.savetxt(file, tracked_status, fmt="%s", delimiter="\t")
+
+    def save_mask(file, data):
+        with open(file, 'w') as f:
+            for frame_mask in data:
+                f.write(json.dumps(frame_mask) + '\n')
 
     def _convert_dict(input_dict):
         data_dict = {}
@@ -62,7 +76,7 @@ def _save_tracker_output(seq: Sequence, tracker: Tracker, output: dict):
                 bbox_file = '{}.txt'.format(base_results_path)
                 save_bb(bbox_file, data)
 
-        if key == 'all_boxes':
+        elif key == 'all_boxes':
             if isinstance(data[0], (dict, OrderedDict)):
                 data_dict = _convert_dict(data)
 
@@ -74,7 +88,7 @@ def _save_tracker_output(seq: Sequence, tracker: Tracker, output: dict):
                 bbox_file = '{}_all_boxes.txt'.format(base_results_path)
                 save_bb(bbox_file, data)
 
-        if key == 'all_scores':
+        elif key == 'all_scores':
             if isinstance(data[0], (dict, OrderedDict)):
                 data_dict = _convert_dict(data)
 
@@ -97,6 +111,22 @@ def _save_tracker_output(seq: Sequence, tracker: Tracker, output: dict):
             else:
                 timings_file = '{}_time.txt'.format(base_results_path)
                 save_time(timings_file, data)
+        
+        elif key == 'segmentation':
+            assert len(frame_names) == len(data)
+            if not os.path.exists(segmentation_path):
+                os.makedirs(segmentation_path)
+            for frame_name, frame_seg in zip(frame_names, data):
+                imwrite_indexed(os.path.join(segmentation_path, '{}.png'.format(frame_name)), frame_seg)
+
+        elif key == 'status':
+            # Single-object mode
+            status_file = '{}_status.txt'.format(base_results_path)
+            save_status(status_file, data)
+        elif key == 'mask_boxes':
+            # Single-object mode
+            mask_file = '{}_mask.jsonl'.format(base_results_path)
+            save_mask(mask_file, data)
 
 
 def run_sequence(seq: Sequence, tracker: Tracker, debug=False, num_gpu=8):
@@ -112,11 +142,15 @@ def run_sequence(seq: Sequence, tracker: Tracker, debug=False, num_gpu=8):
 
     def _results_exist():
         if seq.object_ids is None:
-            if seq.dataset in ['trackingnet', 'got10k', 'lasot', 'lasot_extension_subset', 'otb', 'uav', 'nfs', 'tnl2k']:
-                base_results_path = os.path.join(tracker.results_dir, seq.dataset, seq.name)
-                bbox_file = '{}.txt'.format(base_results_path)
-            else:
-                bbox_file = '{}/{}.txt'.format(tracker.results_dir, seq.name)
+            # if seq.dataset in ['trackingnet', 'got10k']:
+            #     base_results_path = os.path.join(tracker.results_dir, seq.dataset, seq.name)
+            #     bbox_file = '{}.txt'.format(base_results_path)
+            # else:
+            #     bbox_file = '{}/{}.txt'.format(tracker.results_dir, seq.name)
+
+            ''' 2022.9.18 update code '''
+            bbox_file = '{}/{}/{}.txt'.format(tracker.results_dir, seq.dataset, seq.name)
+
             return os.path.isfile(bbox_file)
         else:
             bbox_files = ['{}/{}_{}.txt'.format(tracker.results_dir, seq.name, obj_id) for obj_id in seq.object_ids]
@@ -164,6 +198,7 @@ def run_dataset(dataset, trackers, debug=False, threads=0, num_gpus=8):
     multiprocessing.set_start_method('spawn', force=True)
 
     print('Evaluating {:4d} trackers on {:5d} sequences'.format(len(trackers), len(dataset)))
+    dataset_start_time = time.time()
 
     multiprocessing.set_start_method('spawn', force=True)
 
@@ -180,4 +215,4 @@ def run_dataset(dataset, trackers, debug=False, threads=0, num_gpus=8):
         param_list = [(seq, tracker_info, debug, num_gpus) for seq, tracker_info in product(dataset, trackers)]
         with multiprocessing.Pool(processes=threads) as pool:
             pool.starmap(run_sequence, param_list)
-    print('Done')
+    print('Done, total time: {}'.format(str(timedelta(seconds=(time.time() - dataset_start_time)))))

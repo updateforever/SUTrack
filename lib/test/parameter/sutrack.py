@@ -22,8 +22,11 @@ def parameters(yaml_name: str):
     params.search_size = cfg.TEST.SEARCH_SIZE
 
     # Network checkpoint path
-    params.checkpoint = os.path.join(save_dir, "checkpoints/train/sutrack/%s/SUTRACK_ep%04d.pth.tar" %
-                                     (yaml_name, cfg.TEST.EPOCH))
+    # params.checkpoint = os.path.join(save_dir, "checkpoints/train/sutrack/%s/SUTRACK_ep%04d.pth.tar" %
+    #                                  (yaml_name, cfg.TEST.EPOCH))
+
+    params.checkpoint = "/home/wyp/project/SUTrack/SUTRACK_ep0180.pth.tar"  # sutrack-l 384
+    # params.checkpoint = "/home/wyp/project/SUTrack/SUTRACK_b384_ep0180.pth.tar"  # sutrack-b 384
 
     # whether to save boxes from all queries
     params.save_all_boxes = False

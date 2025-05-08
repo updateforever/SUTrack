@@ -108,3 +108,39 @@ def clip_box(box: list, H, W, margin=0):
     w = max(margin, x2-x1)
     h = max(margin, y2-y1)
     return [x1, y1, w, h]
+
+
+def clip_box_batch(boxes: torch.Tensor, H: int, W: int, margin: int = 0):
+    """
+    输入:
+        boxes: (1, 4, 24, 24) 格式的框 (x1, y1, w, h)
+        H: 图像高度
+        W: 图像宽度
+        margin: 边界余量
+    输出:
+        clipped_boxes: (1, 4, 24, 24)，裁剪后的框
+    """
+    # 解析输入的坐标 (x1, y1, w, h)
+    x1 = boxes[:, 0, :, :]  # x1
+    y1 = boxes[:, 1, :, :]  # y1
+    w = boxes[:, 2, :, :]   # 宽度
+    h = boxes[:, 3, :, :]   # 高度
+
+    # 计算 x2 和 y2
+    x2 = x1 + w
+    y2 = y1 + h
+
+    # 裁剪框的坐标，确保在图像边界内
+    x1_clipped = torch.clamp(x1, min=0, max=W - margin)
+    x2_clipped = torch.clamp(x2, min=margin, max=W)
+    y1_clipped = torch.clamp(y1, min=0, max=H - margin)
+    y2_clipped = torch.clamp(y2, min=margin, max=H)
+
+    # 重新计算裁剪后的宽度和高度，确保不小于 margin
+    w_clipped = torch.clamp(x2_clipped - x1_clipped, min=margin)
+    h_clipped = torch.clamp(y2_clipped - y1_clipped, min=margin)
+
+    # 拼接成 (x1, y1, w, h) 格式
+    clipped_boxes = torch.stack([x1_clipped, y1_clipped, w_clipped, h_clipped], dim=1)
+
+    return clipped_boxes
