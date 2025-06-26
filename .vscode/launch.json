@@ -4,7 +4,6 @@
     // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-    
         {
             "name": "Python 调试程序: 当前文件",
             "type": "debugpy",
@@ -19,14 +18,21 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args": [
-                "sutrack", "sutrack_l384",
-                "--dataset", "lasot",
-                "--runid", "300",
-                "--threads", "0",
-                "--num_gpus", "1",
-                "--debug", "1",
-                "--run_soi", "3",
-                "--sequence", "sheep-3",
+                "sutrack",
+                "sutrack_l384",
+                "--dataset",
+                "lasot_lang",
+                "--runid",
+                "300",
+                "--threads",
+                "0",
+                "--num_gpus",
+                "1",
+                "--debug",
+                "1",
+                "--run_soi",
+                "4",
+                // "--sequence", "sheep-3",
             ]
         },
         {
@@ -36,7 +42,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args": [
-                "--use_api", 
+                "--use_api",
                 // "--multi_level",
                 "--debug",
             ]
@@ -48,35 +54,128 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args": [
-              "--mode", "vis",
-              "--seq_name", "swing-17",
-              "--img_root", "/mnt/first/hushiyu/SOT/LaSOT/data",
-              "--frame_jsonl", "/home/wyp/project/SUTrack/soi/step3_2_results/swing-17_soi_frames.jsonl",
-              "--box_jsonl", "/home/wyp/project/SUTrack/soi/step3_1_results/swing-17.jsonl",
-              "--save_dir", "/home/wyp/project/SUTrack/soi/step4_vlt_outputs/vis_swing-17"
+                "--mode",
+                "vis",
+                "--seq_name",
+                "swing-17",
+                "--img_root",
+                "/mnt/first/hushiyu/SOT/LaSOT/data",
+                "--frame_jsonl",
+                "/home/wyp/project/SUTrack/soi/step3_2_results/swing-17_soi_frames.jsonl",
+                "--box_jsonl",
+                "/home/wyp/project/SUTrack/soi/step3_1_results/swing-17.jsonl",
+                "--save_dir",
+                "/home/wyp/project/SUTrack/soi/step4_vlt_outputs/vis_swing-17"
             ]
-          },
-          {
+        },
+        {
             "name": "Debug Step4 VLT Batch",
             "type": "debugpy",
             "request": "launch",
             "program": "${file}", // 脚本绝对/相对路径
             "args": [
-                "--dataset_name", "lasot",
-                "--soi_root", "/home/wyp/project/SUTrack/soi/step3_2_results",
-                "--filtered_root", "/home/wyp/project/SUTrack/soi/step3_1_results",
-                "--save_dir", "/home/wyp/project/SUTrack/soi/step4_vlt_outputs",
-                "--model_dir", "/mnt/first/wangyipei/qwenvl32b/",
-                "--batch_size", "1",
+                "--dataset_name",
+                "lasot",
+                "--soi_root",
+                "/home/wyp/project/SUTrack/soi/step3_2_results",
+                "--filtered_root",
+                "/home/wyp/project/SUTrack/soi/step3_1_results",
+                "--save_dir",
+                "/home/wyp/project/SUTrack/soi/step4_vlt_outputs",
+                "--model_dir",
+                "/mnt/first/wangyipei/qwenvl32b/",
+                "--batch_size",
+                "1",
                 // "--fp16",
                 // "--debug"               // 若不需要调试可删掉
             ],
-            "justMyCode": false,        // 调试第三方库时设为 false
+            "justMyCode": false, // 调试第三方库时设为 false
             // "console": "integratedTerminal", // 在集成终端显示输出
             // "env": {
             //     // 如果需要额外环境变量可在此添加
             //     "CUDA_VISIBLE_DEVICES": "0"
             // }
+        },
+        {
+            "name": "SOI Pipeline Main",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "soi_pipeline.main",
+            "console": "integratedTerminal",
+            "args": [
+                "--steps",
+                "3",
+                "--dataset",
+                "lasot",
+                "--soi-tracker-dir",
+                "/home/wyp/project/SUTrack/soi/tracker_soi_results",
+                "--detection-dir",
+                "/home/wyp/project/ultralytics/yoloworld_results/",
+                "--output-dir",
+                "./soi_outputs",
+                "--api-key",
+                "xxx",
+                "--status-dir",
+                "/home/wyp/project/SUTrack/soi/trackers_status",
+                "--batch-size",
+                "500",
+                "--save-verification-vis",
+                // "--no-cleaning", 
+            ]
+        },
+        {
+            "name": "SOI Pipeline Main mgit",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "soi_pipeline.main",
+            "console": "integratedTerminal",
+            "args": [
+                "--steps",
+                "0",
+                "--dataset",
+                "lasot_lang",
+                "--soi-tracker-dir",
+                "/home/wyp/project/SUTrack/soi_outputs/lasot/track_results",
+                "--detection-dir",
+                "",
+                "--output-dir",
+                "./soi_outputs/lasot",
+                "--api-key",
+                "xxx",
+                "--status-dir",
+                "/home/wyp/project/SUTrack/soi_outputs/lasot/track_results",
+                "--batch-size",
+                "500",
+                "--save-verification-vis",
+                // "--no-cleaning", 
+            ]
+        },
+        {
+            "name": "验证输出完整性",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "soi_pipeline.main",
+            "console": "integratedTerminal",
+            "args": [
+                "--analyze-only",
+                // "--validate-step5", 
+                "--dataset",
+                "lasot",
+                "--soi-tracker-dir",
+                "/home/wyp/project/SUTrack/soi_outputs/lasot/track_results",
+                "--detection-dir",
+                "",
+                "--output-dir",
+                "./soi_outputs",
+                "--api-key",
+                "xxx",
+                "--status-dir",
+                "/home/wyp/project/SUTrack/soi_outputs/lasot/track_results",
+                "--batch-size",
+                "500",
+                "--save-verification-vis",
+                // "--no-cleaning", 
+            ]
         }
     ]
 }

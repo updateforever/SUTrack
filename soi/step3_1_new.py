@@ -153,7 +153,7 @@ if __name__ == "__main__":
     parser.add_argument('--dataset_name', type=str, default='lasot', help='数据集名称')
     parser.add_argument('--soi_dir', type=str, default='/home/wyp/project/SUTrack/soi/tracker_soi_results', help='跟踪器SOI框文件夹')
     parser.add_argument('--det_dir', type=str, default='/home/wyp/project/ultralytics/yoloworld_results/', help='检测框文件夹（YOLO等）')
-    parser.add_argument('--save_dir', type=str, default='/home/wyp/project/SUTrack/soi/step3_1_results', help='保存路径')
+    parser.add_argument('--save_dir', type=str, default='/home/wyp/project/SUTrack/soi/step3_1_results111111', help='保存路径')
     parser.add_argument('--iou_thresh_gt', type=float, default=0.5, help='GT去重阈值')
     parser.add_argument('--nms_thresh', type=float, default=0.4, help='NMS阈值')
 

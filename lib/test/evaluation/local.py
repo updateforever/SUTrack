@@ -42,5 +42,9 @@ def local_env_settings():
     settings.sot_save_dir = '/home/wyp/project/SUTrack/output/test/soi_tracking_results'
     settings.soi_online_save_dir = '/home/wyp/project/SUTrack/output/test/soi_online_tracking_results'
     settings.soi_vis_dir = '/home/wyp/project/SUTrack/output/test/soi_vis'
+    settings.soi_infer_dir = '/home/wyp/project/SUTrack/output/test/soi_infer'
+
+    settings.videocube_path = '/mnt/first/hushiyu/SOT/VideoCube'
+    settings.lasotlang_path = '/mnt/first/hushiyu/SOT/LaSOT/data'
     return settings
 

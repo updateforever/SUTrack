@@ -46,6 +46,7 @@ DATA:
     SAMPLE_PER_EPOCH: 100000
   USE_NLP:
     TNL2K: True
+
 MODEL:
   ENCODER:
     TYPE: fastitpnl
@@ -109,4 +110,4 @@ TEST:
   USE_NLP:
     DEFAULT: False
     TNL2K: True
-
+    LASOT: True

@@ -6,11 +6,11 @@ from lib.test.analysis.plot_results import plot_results, print_results, print_pe
 from lib.test.evaluation import get_dataset, trackerlist
 
 trackers = []
-dataset_name = 'lasot'
-# choosen from 'uav', 'nfs', 'lasot_extension_subset', 'lasot', 'otb99_lang', 'tnl2k'
+dataset_name = 'lasot_lang'
+# choosen from 'uav', 'nfs', 'lasot_extension_subset', 'lasot', 'otb99_lang', 'tnl2k', 'mgit', 'lasot_lang'
 
-trackers.extend(trackerlist(name='sutrack', parameter_name='sutrack_b384', dataset_name=dataset_name,
-                            run_ids=None, display_name='sutrack_b384', run_soi=3))
+trackers.extend(trackerlist(name='sutrack', parameter_name='sutrack_l384', dataset_name=dataset_name,
+                            run_ids=None, display_name='sutrack_l384', run_soi=4))
 
 dataset = get_dataset(dataset_name)
 

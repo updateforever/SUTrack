@@ -78,12 +78,18 @@ class Tracker:
             self.soi_online = True
             # {"frame_id": frame_id, "status": status, "track_iou_gt": track_iou_gt, "gt_coord": gt_coord, "mask_boxes": mask_boxes}
             self.last_soi_info = {"frame_id": 1, "status": "right", "track_iou_gt": [], "gt_coord": None, "mask_boxes": []}  # TODO 保存soi信息，为后续文本生成做准备
-                  
+        if self.run_soi == 4:  # step 4 run soi refer infer
+            self.results_dir = '{}/{}/{}'.format(env.soi_infer_dir, self.name, self.parameter_name)
+            
         else:
             self.soi_online = False
         
 
     def create_tracker(self, params):
+        if self.run_soi == 4:  # step 4 run soi refer infer
+            params.run_with_soi_refer = True
+        else:
+            params.run_with_soi_refer = False
         tracker = self.tracker_class(params, self.dataset_name)
         return tracker
 

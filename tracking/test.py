@@ -39,14 +39,14 @@ def main():
     parser.add_argument('tracker_name', type=str, help='Name of tracking method.')
     parser.add_argument('tracker_param', type=str, help='Name of config file.')
     parser.add_argument('--runid', type=int, default=None, help='The run id.')
-    parser.add_argument('--dataset_name', type=str, default='lasot', help='Name of dataset (otb, nfs, uav, got10k_test, '
+    parser.add_argument('--dataset_name', type=str, default='lasot_lang', help='Name of dataset (otb, nfs, uav, got10k_test, '
                                                                           'lasot, trackingnet, lasot_extension_subset, tnl2k,'
-                                                                          'lasot_lang, otb99_lang).')
+                                                                          'lasot_lang, otb99_lang, mgit).')
     parser.add_argument('--sequence', type=str, default=None, help='Sequence number or name.')
     parser.add_argument('--debug', type=int, default=0, help='Debug level.')
     parser.add_argument('--threads', type=int, default=0, help='Number of threads.')
-    parser.add_argument('--num_gpus', type=int, default=4)
-    parser.add_argument('--run_soi', type=int, default=3, help='Run SOI.')
+    parser.add_argument('--num_gpus', type=int, default=1)
+    parser.add_argument('--run_soi', type=int, default=0, help='Run SOI.')
 
     args = parser.parse_args()
 

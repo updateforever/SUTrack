@@ -23,6 +23,8 @@ dataset_dict = dict(
     otb99_lang=DatasetInfo(module=pt % "otb99lang", class_name="OTB99LangDataset", kwargs=dict()),
     tnl2k=DatasetInfo(module=pt % "tnl2k", class_name="TNL2kDataset", kwargs=dict()),
     lasot_lang=DatasetInfo(module=pt % "lasotlang", class_name="LaSOTLangDataset", kwargs=dict()),
+    mgit=DatasetInfo(module=pt % "videocube", class_name="VideoCubeDataset", kwargs=dict(split='test')),
+    
 )
 
 

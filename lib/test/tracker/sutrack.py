@@ -11,6 +11,125 @@ import clip
 import numpy as np
 import math
 
+# ============================================================================
+# 通用文本标签集成代码块 - 直接复制到任何跟踪器中使用
+# ============================================================================
+import json
+import os
+from typing import Dict, Optional
+
+class TextLabelIntegration:
+    """
+    简洁文本标签集成类 - 30帧保质期管理
+    """
+    
+    def __init__(self, 
+                 text_level_control: int = 1234,
+                 text_effective_frames: int = 30,
+                 text_base_path: str = "/home/wyp/project/SUTrack/soi_outputs/lasot_old/step4_vlm_descriptions"):
+        """
+        初始化文本标签功能
+        
+        Args:
+            text_level_control: 文本级别控制 (12, 123, 1234)
+            text_effective_frames: 文本保质期帧数
+            text_base_path: 文本数据基础路径
+        """
+        self.text_level_control = text_level_control
+        self.text_effective_frames = text_effective_frames
+        self.text_base_path = text_base_path
+        
+        # 状态变量
+        self.text_descriptions = {}
+        self.current_text_frame = None
+        self.current_text = None
+        self.text_loaded = False
+        
+        print(f"Text integration initialized - Level: {text_level_control}, Frames: {text_effective_frames}")
+    
+    def load_text_data(self, sequence_name: str) -> bool:
+        """加载序列文本数据"""
+        if self.text_loaded:
+            return True
+            
+        jsonl_file = os.path.join(self.text_base_path, f"{sequence_name}_descriptions.jsonl")
+        
+        if not os.path.exists(jsonl_file):
+            print(f"Text file not found: {jsonl_file}")
+            self.text_loaded = True
+            return False
+        
+        try:
+            with open(jsonl_file, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    
+                    data = json.loads(line)
+                    frame_idx = data.get('frame_idx')
+                    vlm_output = data.get('vlm_output_cleaned') or data.get('vlm_output')
+                    
+                    if frame_idx is not None and vlm_output is not None:
+                        self.text_descriptions[frame_idx] = vlm_output
+            
+            self.text_loaded = True
+            print(f"Loaded {len(self.text_descriptions)} text descriptions for {sequence_name}")
+            return True
+            
+        except Exception as e:
+            print(f"Error loading text: {e}")
+            self.text_loaded = True
+            return False
+    
+    def get_text_for_frame(self, frame_id: int) -> Optional[str]:
+        """获取当前帧的文本描述"""
+        # 检查当前帧是否有新文本
+        if frame_id in self.text_descriptions:
+            self.current_text_frame = frame_id
+            vlm_output = self.text_descriptions[frame_id]
+            self.current_text = self._combine_text_levels(vlm_output)
+            return self.current_text
+        
+        # 检查保质期
+        if (self.current_text_frame is not None and 
+            self.current_text is not None and
+            frame_id <= self.current_text_frame + self.text_effective_frames):
+            return self.current_text
+        
+        # 超过保质期，清除
+        self.current_text_frame = None
+        self.current_text = None
+        return None
+    
+    def _combine_text_levels(self, vlm_output: Dict) -> str:
+        """组合文本级别"""
+        if not vlm_output:
+            return ""
+        
+        text_parts = []
+        level_str = str(self.text_level_control)
+        
+        if '1' in level_str and 'level1' in vlm_output:
+            text_parts.append(vlm_output['level1'].strip())
+        
+        if '2' in level_str and 'level2' in vlm_output:
+            text_parts.append(vlm_output['level2'].strip())
+        
+        if '3' in level_str and 'level3' in vlm_output:
+            text_parts.append(vlm_output['level3'].strip())
+        
+        if '4' in level_str and 'level4' in vlm_output:
+            level4 = vlm_output['level4']
+            if isinstance(level4, list):
+                text_parts.extend([t.strip() for t in level4 if t.strip()])
+            elif isinstance(level4, str):
+                text_parts.append(level4.strip())
+        
+        return ' '.join(text_parts)
+
+
+
 class SUTRACK(BaseTracker):
     def __init__(self, params, dataset_name):
         super(SUTRACK, self).__init__(params)
@@ -75,6 +194,12 @@ class SUTRACK(BaseTracker):
         print("USE_NLP is: ", self.use_nlp)
 
         self.task_index_batch = None
+        self.run_with_soi_refer = params.run_with_soi_refer
+        if self.run_with_soi_refer:
+            self.text_integration = TextLabelIntegration(
+                text_level_control=1234,
+                text_effective_frames=30
+            )
 
 
     def initialize(self, image, info: dict):
@@ -109,6 +234,12 @@ class SUTRACK(BaseTracker):
                 self.text_src = self.network.forward_textencoder(text_data=text_data)
         else:
             self.text_src = None
+        
+        # 加载文本数据
+        if self.run_with_soi_refer:
+            seq_name = info.get('seq_name') or getattr(self, 'seq_name', None)
+            if seq_name:
+                self.text_integration.load_text_data(seq_name)
 
 
     def track(self, image, info: dict = None):
@@ -124,13 +255,40 @@ class SUTRACK(BaseTracker):
             search = torch.cat((search, search), axis=1)
         search_list = [search]
 
-        # run the encoder
-        with torch.no_grad():
-            enc_opt = self.network.forward_encoder(self.template_list,
-                                                   search_list,
-                                                   self.template_anno_list,
-                                                   self.text_src,
-                                                   self.task_index_batch)
+        if self.run_with_soi_refer:
+            # 检查文本更新
+            current_text = self.text_integration.get_text_for_frame(self.frame_id)
+            
+            if current_text:
+                # 有文本标签，更新文本特征
+                if current_text != getattr(self, '_last_text', ''):
+                    # print(f"Frame {self.frame_id}: Using text - {current_text}")
+                    text_data, _ = self.extract_token_from_nlp_clip(current_text)
+                    text_data = text_data.unsqueeze(0).to(self.template_list[0].device)
+                    with torch.no_grad():
+                        self.soi_text_src = self.network.forward_textencoder(text_data=text_data)
+                    self._last_text = current_text
+
+                # run the encoder
+                with torch.no_grad():
+                    enc_opt = self.network.forward_encoder(self.template_list,
+                                                    search_list,
+                                                    self.template_anno_list,
+                                                    self.soi_text_src,
+                                                    self.task_index_batch)
+            else:
+                # 没有文本标签，使用默认特征
+                if hasattr(self, '_last_text'):
+                    # print(f"Frame {self.frame_id}: Using default text")
+                    delattr(self, '_last_text')
+
+                # run the encoder
+                with torch.no_grad():
+                    enc_opt = self.network.forward_encoder(self.template_list,
+                                                    search_list,
+                                                    self.template_anno_list,
+                                                    self.text_src,
+                                                    self.task_index_batch)
 
         # run the decoder
         with torch.no_grad():
@@ -282,3 +440,5 @@ class SUTRACK(BaseTracker):
     
 def get_tracker_class():
     return SUTRACK
+
+

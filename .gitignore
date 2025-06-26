@@ -18,3 +18,17 @@ output/
 SUTRACK_ep0180.pth.tar
 SUTRACK_b384_ep0180.pth.tar
 image.png
+soi/step4_vlt_outputs-with_red_box/
+soi/step5_outputs/
+soi/step5_outputs_qwen32b/
+soi_outputs/
+soi_pipeline1111/
+soi/step4_vlt_outputs_debug/
+soi/step4_vlt_outputs_clean/
+step4_vlt_outputs123.tgz
+note.ipynb
+clash.meta
+123.py
+soi_pipeline/tools/111.py
+step4/
+step5/

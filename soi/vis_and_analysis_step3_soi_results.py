@@ -14,7 +14,7 @@ def stat_soi_frame_counts(soi_dir: str):
         path = os.path.join(soi_dir, file)
         with open(path, "r") as f:
             frame_indices = json.load(f)
-
+        # print(file, len(frame_indices))
         stats.append({
             "sequence": file.replace("_soi_frames.jsonl", ""),
             "num_soi_frames": len(frame_indices),
@@ -110,7 +110,8 @@ if __name__ == "__main__":
             )
 
 
-# python soi/vis_and_analysis_step3_soi_results.py --mode stat --soi_dir /home/wyp/project/SUTrack/soi/step3_2_results1111111111111
+# python soi/vis_and_analysis_step3_soi_results.py --mode stat --soi_dir /home/wyp/project/SUTrack/soi_outputs/mgit/step3_2_soi_frames_full
+# /home/wyp/project/SUTrack/soi/step3_2_results1111111111111
 # /home/wyp/project/SUTrack/soi/step3_soi_frames
             
 """
