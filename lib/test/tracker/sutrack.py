@@ -289,7 +289,15 @@ class SUTRACK(BaseTracker):
                                                     self.template_anno_list,
                                                     self.text_src,
                                                     self.task_index_batch)
-
+        else:
+            # run the encoder
+            with torch.no_grad():
+                enc_opt = self.network.forward_encoder(self.template_list,
+                                                search_list,
+                                                self.template_anno_list,
+                                                self.text_src,
+                                                self.task_index_batch)
+                    
         # run the decoder
         with torch.no_grad():
             out_dict = self.network.forward_decoder(feature=enc_opt)
@@ -385,6 +393,10 @@ class SUTRACK(BaseTracker):
             nlp_ids = torch.zeros(77, dtype=torch.long)
             nlp_masks = torch.zeros(77, dtype=torch.long)
         else:
+
+            if len(nlp) > 250:
+                nlp = nlp[:250]
+
             nlp_ids = clip.tokenize(nlp).squeeze(0)
             nlp_masks = (nlp_ids == 0).long()
         return nlp_ids, nlp_masks
