@@ -157,7 +157,7 @@ def run_sequence(seq: Sequence, tracker: Tracker, debug=False, num_gpu=8):
             missing = [not os.path.isfile(f) for f in bbox_files]
             return sum(missing) == 0
 
-    if _results_exist() and not debug:
+    if _results_exist() and not debug:  #  
         print('FPS: {}'.format(-1))
         return
 

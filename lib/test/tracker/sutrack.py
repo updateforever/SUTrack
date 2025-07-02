@@ -11,6 +11,15 @@ import clip
 import numpy as np
 import math
 
+from typing import Dict, Optional, List, Tuple
+import requests
+import base64
+from PIL import Image
+from io import BytesIO
+import json
+import os
+from lib.test.utils.qwenvl_api import GroundingIntegration
+
 # ============================================================================
 # 通用文本标签集成代码块 - 直接复制到任何跟踪器中使用
 # ============================================================================
@@ -194,11 +203,29 @@ class SUTRACK(BaseTracker):
         print("USE_NLP is: ", self.use_nlp)
 
         self.task_index_batch = None
-        self.run_with_soi_refer = params.run_with_soi_refer
+        # wyp
+        # --- SOI Text Integration ---
+        self.run_with_soi_refer = getattr(params, 'run_with_soi_refer', False)
         if self.run_with_soi_refer:
-            self.text_integration = TextLabelIntegration(
-                text_level_control=1234,
-                text_effective_frames=30
+            self.text_integration = TextLabelIntegration()
+            
+        # =================================================================
+        # VLM Grounding功能 - run_with_grounding (独立功能2)
+        # =================================================================
+        self.run_with_grounding = getattr(params, 'run_with_grounding', False)
+        if self.run_with_grounding:
+            self.grounding_integration = GroundingIntegration(
+                api_url=getattr(params, 'grounding_api_url', "https://dashscope.aliyuncs.com/compatible-mode/v1"),
+                api_type=getattr(params, 'grounding_api_type', "qwenvl"),
+                api_key=getattr(params, 'grounding_api_key', None),
+                confidence_threshold=getattr(params, 'grounding_confidence_threshold', 0.4),
+                fusion_weight=getattr(params, 'grounding_fusion_weight', 0.7),
+                min_iou_threshold=getattr(params, 'grounding_min_iou', 0.2),
+                text_effective_frames=getattr(params, 'grounding_text_expiration_frames', 30),
+                text_base_path=getattr(params, 'grounding_text_base_path', "/home/wyp/project/SUTrack/soi_outputs/lasot_old/step4_vlm_descriptions"),
+                qwen_model_id=getattr(params, 'qwen_model_id', "qwen2.5-vl-72b-instruct"),
+                qwen_min_pixels=getattr(params, 'qwen_min_pixels', 512*28*28),
+                qwen_max_pixels=getattr(params, 'qwen_max_pixels', 2048*28*28)
             )
 
 
@@ -235,12 +262,19 @@ class SUTRACK(BaseTracker):
         else:
             self.text_src = None
         
-        # 加载文本数据
+        # Load SOI text data if enabled  wyp
         if self.run_with_soi_refer:
-            seq_name = info.get('seq_name') or getattr(self, 'seq_name', None)
+            seq_name = info.get('seq_name')
             if seq_name:
                 self.text_integration.load_text_data(seq_name)
 
+        # Load SOI text data for grounding if enabled
+        if self.run_with_grounding:
+            seq_name = info.get('seq_name')
+            if seq_name:
+                self.grounding_integration.load_text_data(seq_name)
+            self.init_text_description = info.get("init_nlp", "the tracked object")
+            self.current_text_description = self.init_text_description
 
     def track(self, image, info: dict = None):
         H, W, _ = image.shape
@@ -255,7 +289,8 @@ class SUTRACK(BaseTracker):
             search = torch.cat((search, search), axis=1)
         search_list = [search]
 
-        if self.run_with_soi_refer:
+        # wyp
+        if self.run_with_soi_refer:  
             # 检查文本更新
             current_text = self.text_integration.get_text_for_frame(self.frame_id)
             
@@ -302,6 +337,7 @@ class SUTRACK(BaseTracker):
         with torch.no_grad():
             out_dict = self.network.forward_decoder(feature=enc_opt)
 
+
         # add hann windows
         pred_score_map = out_dict['score_map']
         if self.cfg.TEST.WINDOW == True: # for window penalty
@@ -321,6 +357,41 @@ class SUTRACK(BaseTracker):
         # get the final box result
         pre_state = self.state
         self.state = clip_box(self.map_box_back(pred_box, resize_factor), H, W, margin=10)
+
+        # =================================================================
+        # VLM Grounding处理 - 基于SOI文本标签
+        # =================================================================
+        if self.run_with_grounding:
+            # 检查是否为SOI帧（基于文本标签和置信度）
+            if self.grounding_integration.is_soi_frame(self.frame_id, conf_score.item()):
+                # 获取当前文本描述
+                current_desc = self.grounding_integration.get_current_text(
+                    self.frame_id, 
+                    self.current_text_description
+                )
+                
+                print(f"Frame {self.frame_id}: SOI frame detected, calling grounding API")
+                print(f"Confidence: {conf_score.item():.3f}, Text: {current_desc[:50]}...")
+                
+                # 调用grounding API
+                grounding_result = self.grounding_integration.call_grounding_api(image, current_desc)
+                
+                if grounding_result:
+                    # 融合结果
+                    original_state = self.state.copy()
+                    self.state = self.grounding_integration.fuse_boxes(
+                        self.state, 
+                        grounding_result, 
+                        conf_score.item()
+                    )
+                    
+                    # 更新状态
+                    self.grounding_integration.last_grounding_frame = self.frame_id
+                    self.grounding_integration.grounding_count += 1
+                    
+                    print(f"Frame {self.frame_id}: Applied grounding correction")
+                else:
+                    print(f"Frame {self.frame_id}: Grounding API call failed")
 
         # wyp
         all_scoremap_boxes = self.network.decoder.cal_bbox_for_all_scores(response, out_dict['size_map'], out_dict['offset_map'])  # 1,4,576
@@ -371,6 +442,31 @@ class SUTRACK(BaseTracker):
 
         return {"target_bbox": self.state,
                 "best_score": conf_score}
+
+    def _calculate_box_difference(self, box1, box2):
+        """Calculate difference between two boxes (for logging)"""
+        try:
+            import math
+            dx = box1[0] - box2[0]
+            dy = box1[1] - box2[1]
+            return math.sqrt(dx*dx + dy*dy)
+        except:
+            return 0.0
+        
+    def finalize_sequence(self):
+        """Print grounding performance summary at end of sequence"""
+        if self.run_with_grounding:
+            performance = self.grounding_integration.analyze_performance()
+            if performance:
+                print("\n" + "="*60)
+                print("GROUNDING PERFORMANCE SUMMARY")
+                print("="*60)
+                print(f"Total groundings: {performance['total_groundings']}")
+                print(f"Average IoU: {performance['avg_iou']:.3f}")
+                print(f"Min IoU: {performance['min_iou']:.3f}")
+                print(f"Max IoU: {performance['max_iou']:.3f}")
+                print(f"Avg confidence when grounded: {performance['avg_conf_when_grounded']:.3f}")
+                print("="*60)
 
     def map_box_back(self, pred_box: list, resize_factor: float):
         cx_prev, cy_prev = self.state[0] + 0.5 * self.state[2], self.state[1] + 0.5 * self.state[3]

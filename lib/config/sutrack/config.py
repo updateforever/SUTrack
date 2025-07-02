@@ -144,7 +144,7 @@ cfg.TEST.MULTI_MODAL_LANGUAGE.DEFAULT = False
 cfg.TEST.USE_NLP = edict()
 cfg.TEST.USE_NLP.DEFAULT = False
 cfg.TEST.USE_NLP.TNL2K = True
-cfg.TEST.USE_NLP.LASOT = True  # wyp
+cfg.TEST.USE_NLP.LASOT = False  # wyp
 
 
 
